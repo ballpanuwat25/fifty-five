@@ -1,0 +1,137 @@
+@import "tailwindcss";
+
+:root {
+  --paper: #eee6d6;
+  --ink: #2a3020;
+  --mute: #6f6a59;
+  --gut: clamp(16px, 4vw, 56px);
+  --serif: var(--font-serif), Georgia, serif;
+  --sans: var(--font-sans), system-ui, sans-serif;
+}
+
+* { box-sizing: border-box; margin: 0; }
+html { background: var(--paper); scrollbar-gutter: stable; }
+html.lenis { scroll-behavior: auto; }
+body { background: var(--paper); color: var(--ink); font-family: var(--sans); line-height: 1.5; -webkit-font-smoothing: antialiased; }
+img { display: block; object-fit: cover; }
+
+/* ---- bar */
+.bar { position: fixed; inset: 0 0 auto; z-index: 10; display: flex; justify-content: space-between; align-items: center; padding: 22px var(--gut); font-size: 15px; }
+.bar a { color: inherit; text-decoration: none; }
+.bar-name { font-family: var(--serif); font-size: 22px; letter-spacing: -.01em; }
+.bar nav { display: flex; gap: 28px; }
+.bar-book { background: var(--ink); color: var(--paper) !important; padding: 11px 20px; border-radius: 999px; }
+
+/* ---- hero: the stage is tall so the carriage has room to open while the screen stays put */
+.stage { position: relative; height: 250svh; }
+.stage-pin { position: sticky; top: 0; height: 100svh; overflow: hidden; }
+.hero { position: absolute; inset: 0; display: flex; flex-direction: column; justify-content: flex-end; padding: 0 var(--gut) 5svh; }
+.hero-name { font-family: var(--serif); font-weight: 300; letter-spacing: -.045em; line-height: .82; font-size: clamp(110px, min(23vw, 40svh), 440px); }
+.hero-line { display: flex; align-items: center; }
+.hero-line:first-child { justify-content: space-between; }
+.hero-text, .hero-where { font-family: var(--sans); font-weight: 400; letter-spacing: 0; line-height: 1.5; }
+.hero-side { align-self: flex-end; margin-bottom: 1.6vw; width: min(30vw, 400px); display: flex; flex-direction: column; gap: 22px; }
+.hero-text { font-size: clamp(16px, 1.25vw, 19px); }
+.picker { display: flex; flex-direction: column; }
+.picker button { appearance: none; background: none; border: 0; text-align: left; font: inherit; font-family: var(--sans); letter-spacing: 0; line-height: 1.4; cursor: pointer; display: flex; justify-content: space-between; align-items: baseline; gap: 16px; padding: 7px 0; border-top: 1px solid rgb(42 48 32 / .16); font-size: 14px; color: var(--mute); transition: color .3s; }
+.picker button:last-child { border-bottom: 1px solid rgb(42 48 32 / .16); }
+.picker button b { font-weight: 500; }
+.picker button span { font-size: 13px; }
+.picker button:hover, .picker button.is-on { color: var(--ink); }
+.picker button.is-on b { text-decoration: underline; text-underline-offset: 4px; text-decoration-thickness: 1px; }
+.picker button:focus-visible { outline: 1px solid var(--ink); outline-offset: 3px; }
+.pick-info { display: none; font-family: var(--sans); letter-spacing: 0; line-height: 1.4; }
+.hero-line:last-child { gap: 2.4vw; margin-top: .12em; } /* room for the tail of the y above the F */
+.slot { position: relative; flex: 0 1 1.6em; min-width: 1em; height: .72em; }
+@media (max-width: 1200px) { .slot { flex-basis: min(1.6em, 27vw); } }
+.v { display: inline-block; will-change: transform; }
+/* the name is something to pass the pointer over, not text to select, so it keeps the arrow */
+.hero-name .w1, .hero-name .w2 { cursor: default; user-select: none; }
+.w1, .w2 { white-space: nowrap; flex: none; }
+.rail { position: absolute; left: 0; right: 0; top: 50%; height: 1px; background: var(--ink); transform-origin: 0 50%; transform: scaleX(0); }
+.hero-where { margin-left: auto; flex: none; white-space: nowrap; font-size: 15px; line-height: 1.6; text-align: right; align-self: flex-end; margin-bottom: 2.2vw; }
+
+/* the carriage, drawn over its slot and grown from there by Hero.tsx; the picked class shows in it */
+.car { position: absolute; left: 0; top: 0; z-index: 2; overflow: hidden; will-change: clip-path; }
+@media (hover: hover) and (pointer: fine) { .car { cursor: grab; touch-action: pan-y; } .is-pulling .car { cursor: grabbing; } }
+.is-pulling { user-select: none; }
+.car img { pointer-events: none; user-select: none; }
+/* the cue at the carriage's end: a ring in the type's green that fills as the carriage is pulled, and
+   says when letting go will book */
+.cue { position: absolute; left: calc(var(--shown, 100%) * .93); translate: -100% -50%; top: 50%; width: clamp(84px, 9vw, 120px); aspect-ratio: 1; border-radius: 50%;
+  background: rgb(42 48 32 / .5); color: var(--paper); display: grid; place-items: center; opacity: 0; scale: .9;
+  transition: opacity .35s, scale .35s cubic-bezier(.34,1.56,.64,1), background .25s; pointer-events: none; }
+.cue svg { position: absolute; inset: 0; rotate: -90deg; }
+.cue circle { fill: none; stroke-width: 2; }
+.cue-track { stroke: rgb(238 230 214 / .3); }
+.cue-fill { stroke: var(--paper); stroke-dasharray: var(--p, 0) 1; }
+.cue-arrow { font: 300 clamp(26px, 2.6vw, 36px)/1 var(--sans); translate: calc(var(--p, 0) * 8px) -6px; }
+.cue-say { position: absolute; bottom: 20%; font: 500 11px/1.2 var(--sans); letter-spacing: .04em; text-align: center; width: 72%; }
+.cue-say span:last-child, .car.is-ready .cue-say span:first-child { display: none; }
+.car.is-ready .cue-say span:last-child { display: inline; }
+@media (hover: hover) and (pointer: fine) { .car:hover .cue, .is-pulling .car .cue { opacity: 1; scale: 1; } }
+.car.is-ready .cue { background: rgb(42 48 32 / .9); scale: 1.12; }
+.car.is-away .cue { opacity: 0 !important; }
+@media (max-width: 760px), (max-width: 1180px) and (orientation: portrait) { .cue { display: none; } }
+/* the hint under the carriage, until it has been pulled once */
+.pull { position: absolute; left: .6em; top: calc(100% + 10px); font: 12px/1 var(--sans); letter-spacing: .02em; color: var(--mute); white-space: nowrap; opacity: 0; transition: opacity .4s; pointer-events: none; }
+.pull::after { content: ' →'; }
+@media (hover: hover) and (pointer: fine) { .stage.is-open:not(.was-pulled) .pull { opacity: 1; } }
+.car picture { position: absolute; inset: 0; opacity: 0; transition: opacity .7s; }
+.car picture.is-on { opacity: 1; }
+.car img { width: 100%; height: 100%; max-width: none; }
+
+/* the picked class, laid over the room once it fills the screen */
+.room { position: absolute; inset: auto 0 0; z-index: 3; padding: 30vh var(--gut) 6svh; color: var(--paper); opacity: 0;
+  background: linear-gradient(rgb(24 27 18 / 0), rgb(24 27 18 / .45) 45%, rgb(24 27 18 / .74)); }
+.room-when { font-size: 14px; letter-spacing: .02em; opacity: .85; }
+.room-name { font-family: var(--serif); font-weight: 300; font-size: clamp(56px, 8vw, 132px); letter-spacing: -.035em; line-height: .95; margin: 6px 0 10px; }
+.room-who { font-size: 16px; opacity: .85; }
+.room-row { display: flex; justify-content: space-between; align-items: center; gap: 24px; margin-top: 28px; flex-wrap: wrap; }
+.beds { display: flex; align-items: center; gap: 6px; font-size: 14px; }
+.beds i { width: 12px; height: 26px; border-radius: 3px; border: 1px solid rgb(238 230 214 / .8); }
+.beds i.is-taken { background: rgb(238 230 214 / .8); }
+.beds span { margin-left: 10px; }
+.room-book { background: var(--paper); color: var(--ink); padding: 14px 26px; border-radius: 999px; font-weight: 500; text-decoration: none; }
+.room-book::after { content: ' →'; }
+.bar { transition: color .4s, background-color .4s; }
+.bar::before { content: ''; position: absolute; inset: 0 0 -40px; z-index: -1; background: linear-gradient(rgb(24 27 18 / .38), transparent); opacity: 0; transition: opacity .4s; pointer-events: none; }
+.bar.on-photo::before { opacity: 1; }
+.bar.on-photo { color: var(--paper); }
+.bar.on-photo .bar-book { background: var(--paper); color: var(--ink) !important; }
+/* before the opening plays, only the bar shows */
+.stage:not(.is-open) :is(.w1, .w2, .hero-side, .hero-where, .car) { opacity: 0; }
+
+.next { min-height: 100svh; padding: 110px var(--gut); }
+.next h2 { font-family: var(--serif); font-weight: 300; font-size: clamp(48px, 6vw, 96px); letter-spacing: -.03em; line-height: .95; }
+.next p { color: var(--mute); margin-top: 14px; max-width: 46ch; }
+
+/* screens held upright (phones, an iPad): the name stacks, and the carriage becomes a wide band of its own
+   between the two words, the biggest thing in the first view */
+@media (max-width: 760px), (max-width: 1180px) and (orientation: portrait) {
+  .bar nav { display: none; }
+  .hero { padding: 92px var(--gut) 4svh; justify-content: flex-end; }
+  .hero-name { font-size: min(25vw, 15svh); }
+  .hero-line:first-child { flex-direction: column; align-items: stretch; }
+  .hero-side { width: 100%; margin: .26em 0 0; flex-direction: row; gap: 4vw; align-items: flex-start; }
+  .hero-text { flex: 1 1 0; }
+  .picker { flex: 1 1 0; }
+  .hero-line:last-child { flex-wrap: wrap; }
+  .slot { flex: 1 1 100%; height: clamp(150px, 30svh, 420px); margin: 3svh 0 1svh; }
+  .hero-where { margin: 0 0 1.4em auto; text-align: right; flex: none; white-space: nowrap; }
+  .pull { display: none; }
+}
+@media (max-width: 760px) {
+  .hero-name { font-size: min(29vw, 14svh); }
+  .hero-side { flex-direction: column; gap: 14px; }
+  .hero-text { font-size: 15px; }
+  .picker { flex-direction: row; flex-wrap: wrap; gap: 4px 16px; }
+  .picker button, .picker button:last-child { border: 0; padding: 2px 0; }
+  .picker button span { display: none; }
+  .pick-info { display: block; font-size: 13px; color: var(--mute); margin-top: -8px; }
+  .hero-where { font-size: 13px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .car picture { transition: none; }
+}
