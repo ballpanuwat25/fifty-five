@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
-import { free, hero, studio, when } from '@/content/site';
+import { free, hero, photoOf, studio, when } from '@/content/site';
 
 // The pill in the name is the reformer's carriage. When the page opens it slides out once along its rail,
 // slow and controlled, and stops. As you scroll it opens from its place in the name to the whole room.
@@ -96,7 +96,8 @@ export default function Hero() {
       lean += (leanTo - lean) * 0.1;
       // the breath starts once the opening roll has passed, from empty, so it begins without a jump
       const rs = rolled === null ? -1 : (now - rolled) / 1000;
-      const free = !reduce && !drag && !pull && t < 0.02 && slid === null && rs >= ROLL_S;
+      // no breath where the carriage is a band across an upright screen: there it only opens as you scroll
+      const free = !reduce && !upright() && !drag && !pull && t < 0.02 && slid === null && rs >= ROLL_S;
       breath += ((free ? 1 : 0) - breath) * 0.05;
       const inhale = rs < ROLL_S ? 0 : (1 - Math.cos(((rs - ROLL_S) / BREATH_S) * Math.PI * 2)) / 2;
       const out = pull + lean + breath * inhale * f.w * BREATH;
@@ -117,6 +118,7 @@ export default function Hero() {
         clipPath: `inset(0 ${box - shownW}px 0 0 round ${Math.min(h / 2, lerp(f.h / 2, 0, t))}px)`,
       });
       cr.style.setProperty('--shown', `${shownW}px`);
+      cr.style.setProperty('--open', String(clamp01((t - 0.1) / 0.45)));
       // the word the carriage pushes aside, and the rest stepping back as the room opens
       fv.style.transform = `translateX(${t * W * 0.9 + out}px)`;
       // the roll: each letter near the pointer lifts, more for a quick pass, and eases back down
@@ -154,7 +156,8 @@ export default function Hero() {
     addEventListener('resize', onResize);
 
     // how far the carriage can be pulled: none where it is a band across the screen
-    const reach = (w: number) => (matchMedia(UPRIGHT).matches ? 0 : Math.min(w * 0.6, pin.clientWidth * 0.3));
+    const reach = (w: number) => (upright() ? 0 : Math.min(w * 0.6, pin.clientWidth * 0.3));
+    const upright = () => matchMedia(UPRIGHT).matches;
     const hoverable = () => matchMedia('(hover: hover) and (pointer: fine)').matches && !reduce;
     const onPointer = (e: PointerEvent) => {
       if (e.pointerType !== 'mouse') return;
@@ -269,10 +272,16 @@ export default function Hero() {
         </div>
         <a className="car" ref={car} href="#classes" aria-label={`${hero.book}: ${hero.classes[pick].name}`} draggable={false}>
           {hero.classes.map((c, i) => (
-            <picture key={c.name} className={i === shown ? 'is-on' : ''}>
-              <source media="(orientation: portrait)" srcSet={c.tall} />
-              <img src={c.wide} alt={i === shown ? `${c.name} at Fifty-Five` : ''} />
-            </picture>
+            // the wide photo fills the capsule on every screen; on an upright one the tall photo takes over as
+            // the carriage opens to the whole screen
+            <span key={c.name} className={`car-photo${i === shown ? ' is-on' : ''}`}
+              style={{ '--band': `${c.bandY}%`, '--zoom': c.zoom ?? 1 } as React.CSSProperties}>
+              {/* the photos are already sized and compressed for the site (scripts/export-photos.py) */}
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img className="wide" src={photoOf(c.photo).wide} alt={i === shown ? `${c.name} at Fifty-Five` : ''} />
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img className="tall" src={photoOf(c.photo).tall} alt="" loading="lazy" />
+            </span>
           ))}
           <span className="cue" aria-hidden="true">
             <svg viewBox="0 0 100 100"><circle className="cue-track" cx="50" cy="50" r="46" /><circle className="cue-fill" cx="50" cy="50" r="46" pathLength="1" /></svg>

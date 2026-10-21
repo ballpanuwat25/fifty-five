@@ -77,9 +77,12 @@ img { display: block; object-fit: cover; }
 .pull { position: absolute; left: .6em; top: calc(100% + 10px); font: 12px/1 var(--sans); letter-spacing: .02em; color: var(--mute); white-space: nowrap; opacity: 0; transition: opacity .4s; pointer-events: none; }
 .pull::after { content: ' →'; }
 @media (hover: hover) and (pointer: fine) { .stage.is-open:not(.was-pulled) .pull { opacity: 1; } }
-.car picture { position: absolute; inset: 0; opacity: 0; transition: opacity .7s; }
-.car picture.is-on { opacity: 1; }
-.car img { width: 100%; height: 100%; max-width: none; }
+.car-photo { position: absolute; inset: 0; opacity: 0; transition: opacity .7s; }
+.car-photo.is-on { opacity: 1; }
+.car img { position: absolute; inset: 0; width: 100%; height: 100%; max-width: none; }
+.car .wide { object-position: 50% var(--band, 50%); scale: var(--zoom, 1); transform-origin: 0 50%; }
+.car .tall { opacity: 0; }
+@media (orientation: portrait) { .car .tall { opacity: var(--open, 0); } }
 
 /* the picked class, laid over the room once it fills the screen */
 .room { position: absolute; inset: auto 0 0; z-index: 3; padding: 30vh var(--gut) 6svh; color: var(--paper); opacity: 0;
@@ -117,11 +120,13 @@ img { display: block; object-fit: cover; }
   .hero-text { flex: 1 1 0; }
   .picker { flex: 1 1 0; }
   .hero-line:last-child { flex-wrap: wrap; }
-  .slot { flex: 1 1 100%; height: clamp(150px, 30svh, 420px); margin: 3svh 0 1svh; }
+  /* a capsule like the Book button, inset from the edges, with the page's air above it */
+  .slot { flex: 0 0 auto; width: calc(100% - 8vw); height: clamp(120px, 20svh, 260px); margin: 3svh 4vw 1svh; }
   .hero-where { margin: 0 0 1.4em auto; text-align: right; flex: none; white-space: nowrap; }
   .pull { display: none; }
 }
 @media (max-width: 760px) {
+  .slot { height: clamp(96px, 15svh, 150px); }
   .hero-name { font-size: min(29vw, 14svh); }
   .hero-side { flex-direction: column; gap: 14px; }
   .hero-text { font-size: 15px; }
@@ -133,5 +138,5 @@ img { display: block; object-fit: cover; }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .car picture { transition: none; }
+  .car-photo { transition: none; }
 }
