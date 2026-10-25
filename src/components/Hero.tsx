@@ -148,7 +148,10 @@ export default function Hero() {
       rm.style.opacity = String(shown);
       rm.style.translate = `0 ${(1 - shown) * 24}px`;
       rm.toggleAttribute('inert', shown < 0.5);
-      bar?.classList.toggle('on-photo', t > 0.55);
+      // the bar reads over the photo while the room fills the screen, and on its own paper once past it
+      const past = st.getBoundingClientRect().bottom < 72;
+      bar?.classList.toggle('on-photo', t > 0.55 && !past);
+      bar?.classList.toggle('is-solid', past);
       raf = requestAnimationFrame(frame);
     };
 
@@ -270,7 +273,7 @@ export default function Hero() {
             </span>
           </h1>
         </div>
-        <a className="car" ref={car} href="#classes" aria-label={`${hero.book}: ${hero.classes[pick].name}`} draggable={false}>
+        <a className="car" ref={car} href={`#${hero.classes[pick].id}`} aria-label={`${hero.book}: ${hero.classes[pick].name}`} draggable={false}>
           {hero.classes.map((c, i) => (
             // the wide photo fills the capsule on every screen; on an upright one the tall photo takes over as
             // the carriage opens to the whole screen
@@ -298,7 +301,7 @@ export default function Hero() {
               {Array.from({ length: hero.classes[pick].places }, (_, i) => <i key={i} className={i < hero.classes[pick].taken ? 'is-taken' : ''} />)}
               <span>{free(hero.classes[pick])}</span>
             </span>
-            <a className="room-book" href="#classes">{hero.classes[pick].taken >= hero.classes[pick].places ? hero.waitlist : hero.bookThis}</a>
+            <a className="room-book" href={`#${hero.classes[pick].id}`}>{hero.classes[pick].taken >= hero.classes[pick].places ? hero.waitlist : hero.bookThis}</a>
           </div>
         </div>
       </div>

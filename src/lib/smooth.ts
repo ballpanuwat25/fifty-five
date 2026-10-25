@@ -27,8 +27,9 @@ export function onWheelTurn(fn: (data: VirtualScrollData) => boolean) {
 }
 
 // Where a link in the page lands. A part of a section that is already in view with the section at the
-// top of the screen (the packs beside the sessions on a wide screen) lands on the section, so its heading
-// shows; anything lower lands just under the bar.
+// top of the screen lands on the section, so its heading shows; anything lower lands just under the bar.
+// A part marked data-land="self" (a class row, which opens its booking as the link is followed and grows
+// below the fold) always lands just under the bar.
 const BAR = 72;
 function landing(href: string) {
   if (href === '#' || href === '#top') return 0;
@@ -37,6 +38,7 @@ function landing(href: string) {
   const top = (n: Element) => scrollY + n.getBoundingClientRect().top;
   const section = el.closest('section');
   if (el.tagName === 'SECTION' || !section) return top(el);
+  if (el.dataset.land === 'self') return top(el) - BAR - 24;
   return el.getBoundingClientRect().bottom - section.getBoundingClientRect().top <= innerHeight ? top(section) : top(el) - BAR;
 }
 

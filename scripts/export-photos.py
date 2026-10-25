@@ -6,6 +6,9 @@ carriage and wide screens) and a tall 9:16 one (phones). Gemini lit the room fro
 set is mirrored so the morning light falls from the right in every picture and the subject sits where
 the carriage shows it. Foundations is shot from above and keeps its own orientation.
 
+The four teacher portraits are generated the same way (design/photos-src/teacher-<name>.jpg) and are
+served as they were made, only resized.
+
     python -I scripts/export-photos.py
 """
 
@@ -26,6 +29,9 @@ CLASSES = {
 }
 # served widths: a wide picture fills a 2x desktop screen, a tall one a 3x phone
 WIDTH = {"wide": 2400, "tall": 1290}
+TEACHERS = ["prae", "khao", "oat", "mint"]
+# a portrait card is at most about 400 px wide, so twice that
+TEACHER_WIDTH = 800
 
 
 def source(prefix: str, kind: str) -> Path:
@@ -47,6 +53,12 @@ def main() -> None:
             path = OUT / f"{slug}-{kind}.webp"
             im.save(path, "WEBP", quality=80, method=6)
             print(f"{path.relative_to(ROOT)}  {im.size[0]}x{im.size[1]}  {path.stat().st_size // 1024} KB")
+    for name in TEACHERS:
+        im = Image.open(SRC / f"teacher-{name}.jpg").convert("RGB")
+        im = im.resize((TEACHER_WIDTH, round(im.height * TEACHER_WIDTH / im.width)), Image.LANCZOS)
+        path = OUT / f"teacher-{name}.webp"
+        im.save(path, "WEBP", quality=80, method=6)
+        print(f"{path.relative_to(ROOT)}  {im.size[0]}x{im.size[1]}  {path.stat().st_size // 1024} KB")
 
 
 if __name__ == "__main__":

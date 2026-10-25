@@ -1,6 +1,11 @@
+import Classes from '@/components/Classes';
+import FindUs from '@/components/FindUs';
+import Footer from '@/components/Footer';
 import Header from '@/components/Header';
 import Hero from '@/components/Hero';
+import Packs from '@/components/Packs';
 import SmoothScroll from '@/components/SmoothScroll';
+import Teachers from '@/components/Teachers';
 
 export default function Home() {
   return (
@@ -9,11 +14,12 @@ export default function Home() {
       <Header />
       <main>
         <Hero />
-        <section className="next" id="classes">
-          <h2>This week</h2>
-          <p>The timetable comes next. The class in the carriage when you scrolled will be the one already open.</p>
-        </section>
+        <Classes />
+        <Teachers />
+        <Packs />
+        <FindUs />
       </main>
+      <Footer />
     </>
   );
 }
