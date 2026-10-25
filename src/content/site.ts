@@ -222,3 +222,14 @@ export const foot = {
   top: 'Back to the top',
   note: 'Fifty-Five is a made-up studio, built as a portfolio piece. Thong Lo and its streets are real; the studio, its teachers and its bookings are not. The photographs of the room were generated with AI and contain no real people. Map data © OpenStreetMap contributors. Type: Zodiak and Switzer from the Indian Type Foundry.',
 };
+
+// The loading screen: the carriage drawn along its rail as the first view arrives, counting up to 55
+export const loader = { setting: 'Setting the springs', ready: 'Ready' };
+
+// The page for an address the site does not have: a bed the room does not have
+export const lost = {
+  heading: 'There is no bed 404.',
+  text: 'The room has eight, and the page you were looking for is not one of them.',
+  home: 'Back to the studio',
+  book: 'See this week’s classes',
+};

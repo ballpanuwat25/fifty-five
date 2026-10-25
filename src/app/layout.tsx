@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from 'next';
 import localFont from 'next/font/local';
 import 'lenis/dist/lenis.css';
 import './globals.css';
+import { studio } from '@/content/site';
 
 // the name and numbers: Zodiak, a sharp display serif; text: Switzer. Both from Fontshare (ITF Free Font
 // Licence), served from the site itself.
@@ -17,7 +18,7 @@ const switzer = localFont({
 });
 
 const title = 'Fifty-Five · Reformer Pilates, Thong Lo, Bangkok';
-const description = 'Reformer Pilates on Sukhumvit 55, Bangkok. Eight beds to a room, classes from 07:00, booked online. Six minutes from BTS Thong Lo.';
+const description = `Reformer Pilates on Thong Lo 13, Bangkok. Eight beds to a room, classes from 07:00, booked online. ${studio.walk}.`;
 export const metadata: Metadata = {
   title,
   description,

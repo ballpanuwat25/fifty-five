@@ -3,6 +3,7 @@ import FindUs from '@/components/FindUs';
 import Footer from '@/components/Footer';
 import Header from '@/components/Header';
 import Hero from '@/components/Hero';
+import Loader from '@/components/Loader';
 import Packs from '@/components/Packs';
 import SmoothScroll from '@/components/SmoothScroll';
 import Teachers from '@/components/Teachers';
@@ -10,6 +11,7 @@ import Teachers from '@/components/Teachers';
 export default function Home() {
   return (
     <>
+      <Loader />
       <SmoothScroll />
       <Header />
       <main>

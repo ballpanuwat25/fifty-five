@@ -1,0 +1,32 @@
+/* The film stage (Stage.tsx): a ground a shade darker than the site's paper, two plain frames with a soft
+   shadow, and a caption under each in the serif. Sizes are in the video's own pixels; the stage scales as
+   a whole. */
+html[data-film], html[data-film] body { overflow: hidden; background: #e2d8c4; }
+/* The stage and the desk's frame are sized with zoom, not a scale transform: Chrome draws a fixed bar inside
+   a transformed frame with a stray copy of its edge at the top of the window, which zoom does not do */
+.film-fit { position: fixed; inset: 0; display: grid; place-items: center; overflow: hidden; background: #e2d8c4; }
+.film { position: relative; flex: none; display: flex; align-items: flex-start; justify-content: center; gap: 80px; padding-top: 82px; background: #e2d8c4; }
+.film figure { margin: 0; }
+.film-screen { position: relative; overflow: hidden; background: var(--paper); box-shadow: 0 0 0 1px rgb(42 48 32 / .1), 0 24px 44px rgb(42 48 32 / .22), 0 2px 6px rgb(42 48 32 / .12); }
+.film-desk .film-screen { width: 1368px; height: 855px; border-radius: 14px; }
+.film-phone .film-screen { width: 390px; height: 844px; border-radius: 34px; }
+.film-inner { position: absolute; left: 0; top: 0; }
+.film-desk .film-inner { width: 1368px; height: 855px; }
+.film-phone .film-inner { width: 390px; height: 844px; }
+.film iframe { display: block; width: 100%; height: 100%; border: 0; background: var(--paper); }
+.film-veil { position: absolute; inset: 0; background: var(--paper); opacity: 1; pointer-events: none; }
+.film-cursor { position: absolute; left: -3px; top: -2px; pointer-events: none; will-change: transform; filter: drop-shadow(0 2px 3px rgb(42 48 32 / .4)); }
+.film-cursor path { fill: #fff; stroke: var(--ink); stroke-width: 1.3; stroke-linejoin: round; }
+.film-finger { position: absolute; left: 0; top: 0; opacity: 0; pointer-events: none; will-change: transform, opacity; }
+.film-finger::after { content: ""; position: absolute; left: -22px; top: -22px; width: 44px; height: 44px; border-radius: 50%; border: 2px solid rgb(42 48 32 / .9); background: rgb(123 138 62 / .22); transform: scale(var(--ring, 1)); }
+.film figcaption { margin-top: 24px; font-family: var(--serif); font-weight: 300; font-size: 28px; line-height: 1.2; color: var(--mute); }
+.film-problem { position: absolute; left: 0; right: 0; bottom: 24px; margin: 0; text-align: center; font-size: 18px; color: var(--rust); }
+/* the opening and closing cards: the name in the serif with its carriage, over the paper */
+.film-card { position: absolute; inset: 0; display: grid; place-content: center; justify-items: center; text-align: center; background: var(--paper); opacity: 0; pointer-events: none; transition: opacity 1.4s ease; }
+.film-card[data-on] { opacity: 1; }
+.film-card-name { display: flex; align-items: center; gap: .1em; font: 300 168px/1 var(--serif); letter-spacing: -.045em; color: var(--ink); }
+.film-card-name i { width: 1.5em; height: .6em; border-radius: 99px; background: url(/photos/flow-wide.webp) 50% 75% / cover; margin-top: .08em; }
+.film-card-line { margin-top: 40px; max-width: 900px; text-wrap: balance; font-size: 28px; line-height: 1.45; color: var(--ink); }
+.film-card-note { margin-top: 22px; font-size: 19px; color: var(--mute); }
+/* the dev server's badge is not part of the site */
+nextjs-portal { display: none !important; }

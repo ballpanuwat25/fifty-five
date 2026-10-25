@@ -1,0 +1,190 @@
+// The frame clock both recorders share (record-film.mjs, record-hero.mjs). Recording a page as it plays drops
+// and repeats frames whenever Chrome is busy, which shows as a stutter. So a recording plays the page on a
+// clock of its own: SHIM, put into every frame before the page runs, takes over its timers, animation
+// frames, performance.now and Date.now, which pass through to the real ones until window.__vt.start().
+// From then on the recorder moves the clock with window.__vt.advance(ms), brings CSS animations to the same
+// moment, lets messages and network answers settle, and takes a screenshot, so every frame is exactly one
+// step after the last however long Chrome takes to draw it. Needs Chrome and ffmpeg.
+import { spawn, spawnSync } from 'node:child_process';
+import { existsSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import path from 'node:path';
+
+const CHROME = ['C:/Program Files/Google/Chrome/Application/chrome.exe', '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome', '/usr/bin/google-chrome'].find(existsSync);
+export const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+
+export const SHIM = `(() => {
+  let host = window;
+  try { if (window.top && window.top.__vt) host = window.top; } catch {}
+  if (host === window && window.__vt) return;
+  const real = {
+    setTimeout: window.setTimeout.bind(window), clearTimeout: window.clearTimeout.bind(window),
+    setInterval: window.setInterval.bind(window), clearInterval: window.clearInterval.bind(window),
+    raf: window.requestAnimationFrame.bind(window), caf: window.cancelAnimationFrame.bind(window),
+    perfNow: performance.now.bind(performance), dateNow: Date.now.bind(Date),
+  };
+  let clock = host.__vt;
+  if (!clock) {
+    clock = host.__vt = { on: false, now: 0, seq: 1e9, timers: new Map(), rafs: new Map(), wins: new Set(), dateBase: 0,
+      frames: [], realOf: new Map() };
+  }
+  clock.wins.add(window);
+  // this frame's own performance.now origin, fixed when the clock first runs for it
+  let perfBase = null, vtBase = 0;
+  const perfNow = () => {
+    if (!clock.on) return real.perfNow();
+    if (perfBase === null) { perfBase = real.perfNow(); vtBase = clock.now; }
+    return perfBase + (clock.now - vtBase);
+  };
+  clock.realOf.set(window, real);
+  const W = window;
+  W.__vtPerfNow = perfNow;
+  performance.now = perfNow;
+  const RealDate = Date;
+  Date.now = () => (clock.on ? clock.dateBase + clock.now : real.dateNow());
+  W.setTimeout = (fn, ms = 0, ...args) => {
+    if (!clock.on) return real.setTimeout(fn, ms, ...args);
+    const id = ++clock.seq;
+    clock.timers.set(id, { at: clock.now + Math.max(0, Number(ms) || 0), fn, args, win: W, every: 0 });
+    return id;
+  };
+  W.setInterval = (fn, ms = 0, ...args) => {
+    if (!clock.on) return real.setInterval(fn, ms, ...args);
+    const id = ++clock.seq;
+    const every = Math.max(1, Number(ms) || 0);
+    clock.timers.set(id, { at: clock.now + every, fn, args, win: W, every });
+    return id;
+  };
+  W.clearTimeout = W.clearInterval = (id) => { if (clock.timers.has(id)) clock.timers.delete(id); else { real.clearTimeout(id); real.clearInterval(id); } };
+  W.requestAnimationFrame = (cb) => {
+    if (!clock.on) return real.raf(cb);
+    const id = ++clock.seq;
+    clock.rafs.set(id, { cb, win: W });
+    return id;
+  };
+  W.cancelAnimationFrame = (id) => { if (clock.rafs.has(id)) clock.rafs.delete(id); else real.caf(id); };
+  // a smooth scroll by the browser runs on the real clock; on the film's clock it is eased here instead
+  const smooth = (top) => {
+    const from = W.scrollY, to = Math.max(0, Math.min(top, W.document.documentElement.scrollHeight - W.innerHeight));
+    const start = perfNow(), ms = 500;
+    const step = () => { const t = Math.min(1, (perfNow() - start) / ms); const e = t < .5 ? 4*t*t*t : 1 - Math.pow(-2*t+2, 3)/2;
+      W.scrollTo({ top: from + (to - from) * e, behavior: 'instant' }); if (t < 1) W.requestAnimationFrame(step); };
+    step();
+  };
+  const realIntoView = W.Element.prototype.scrollIntoView;
+  W.Element.prototype.scrollIntoView = function (o) {
+    if (!clock.on || !o || typeof o !== 'object' || o.behavior !== 'smooth') return realIntoView.call(this, o);
+    const r = this.getBoundingClientRect();
+    const y = W.scrollY + (o.block === 'center' ? r.top + r.height / 2 - W.innerHeight / 2 : r.top);
+    smooth(y);
+  };
+  if (host === window) {
+    const anims = new WeakMap();
+    const framesOf = () => { const out = []; const walk = (w) => { out.push(w); for (let i = 0; i < w.frames.length; i++) { try { walk(w.frames[i]); } catch {} } }; walk(window); return out; };
+    clock.start = () => { clock.dateBase = real.dateNow(); clock.on = true; };
+    clock.syncCss = () => {
+      for (const w of framesOf()) {
+        let list = [];
+        try { list = w.document.getAnimations(); } catch { continue; }
+        for (const a of list) {
+          let seen = anims.get(a);
+          if (!seen) { try { a.pause(); } catch {} seen = { at: clock.now, from: Number(a.currentTime) || 0 }; anims.set(a, seen); }
+          try { a.currentTime = seen.from + (clock.now - seen.at) * (a.playbackRate || 1); } catch {}
+        }
+      }
+    };
+    clock.advance = (ms) => {
+      const target = clock.now + ms;
+      for (let guard = 0; guard < 5000; guard++) {
+        let next = null;
+        for (const [id, t] of clock.timers) if (t.at <= target && (!next || t.at < next[1].at)) next = [id, t];
+        if (!next) break;
+        const [id, t] = next;
+        clock.now = Math.max(clock.now, t.at);
+        if (t.every) t.at += t.every; else clock.timers.delete(id);
+        try { t.fn(...t.args); } catch (e) { console.error(e); }
+      }
+      clock.now = target;
+      const due = [...clock.rafs.values()];
+      clock.rafs.clear();
+      for (const r of due) { try { r.cb(r.win.__vtPerfNow ? r.win.__vtPerfNow() : clock.now); } catch (e) { console.error(e); } }
+      clock.syncCss();
+    };
+  }
+})();`;
+
+// A headless Chrome at this window size, with the clock put into every page it opens, and the frames it
+// takes written to a folder of its own. `step(ms)` moves the clock and settles the page; `shot()` writes
+// the next frame; `encode(out, fps)` turns the frames into an MP4 and clears up.
+export async function open({ width, height, dsf = 1, prefix }) {
+  const work = mkdtempSync(path.join(tmpdir(), prefix));
+  const frames = path.join(work, 'frames');
+  mkdirSync(frames);
+  const port = 9200 + Math.floor(Math.random() * 500);
+  const chrome = spawn(CHROME, [
+    '--headless=new', `--remote-debugging-port=${port}`, `--user-data-dir=${path.join(work, 'profile')}`,
+    `--window-size=${width},${height}`, '--hide-scrollbars', '--no-first-run', '--mute-audio', '--force-color-profile=srgb', 'about:blank',
+  ], { stdio: 'ignore' });
+  let targets;
+  for (let i = 0; i < 50 && !targets; i++) {
+    try {
+      targets = await (await fetch(`http://127.0.0.1:${port}/json`)).json();
+    } catch {
+      await sleep(200);
+    }
+  }
+  const ws = new WebSocket(targets.find((t) => t.type === 'page').webSocketDebuggerUrl);
+  await new Promise((r) => ws.addEventListener('open', r, { once: true }));
+  let id = 0;
+  const pending = new Map();
+  ws.addEventListener('message', (e) => {
+    const m = JSON.parse(e.data);
+    if (m.id && pending.has(m.id)) {
+      pending.get(m.id)(m);
+      pending.delete(m.id);
+    }
+  });
+  const send = (method, params = {}) => new Promise((r) => { const i = ++id; pending.set(i, r); ws.send(JSON.stringify({ id: i, method, params })); });
+  const run = async (expression, awaitPromise = false) => (await send('Runtime.evaluate', { expression, returnByValue: true, awaitPromise })).result?.result?.value;
+
+  await send('Emulation.setDeviceMetricsOverride', { width, height, deviceScaleFactor: dsf, mobile: false });
+  await send('Emulation.setFocusEmulationEnabled', { enabled: true });
+  await send('Page.enable');
+  await send('Page.addScriptToEvaluateOnNewDocument', { source: SHIM });
+
+  let k = 0;
+  return {
+    send, run,
+    get frames() { return k; },
+    async step(ms) {
+      await run(`window.__vt.advance(${ms})`);
+      // messages between frames, promises and network answers settle on the real event loop
+      await run(`new Promise((r) => { const ch = new MessageChannel(); ch.port1.onmessage = () => r(1); ch.port2.postMessage(0); })`, true);
+      await run('window.__vt.syncCss()');
+    },
+    async shot(format = 'jpeg') {
+      const s = await send('Page.captureScreenshot', format === 'png' ? { format } : { format, quality: 90 });
+      const data = Buffer.from(s.result.data, 'base64');
+      if (format === 'jpeg') writeFileSync(path.join(frames, `${String(k++).padStart(5, '0')}.jpg`), data);
+      return data;
+    },
+    encode(out, fps, crf = 16) {
+      ws.close();
+      chrome.kill();
+      mkdirSync(path.dirname(out), { recursive: true });
+      // Chrome's frames are full-range JPEG; players expect the TV range, so it is converted on the way
+      const ff = spawnSync('ffmpeg', [
+        '-y', '-loglevel', 'error', '-framerate', String(fps), '-i', path.join(frames, '%05d.jpg'),
+        '-vf', 'scale=in_range=pc:out_range=tv,format=yuv420p', '-c:v', 'libx264', '-preset', 'slow', '-crf', String(crf),
+        '-color_range', 'tv', '-colorspace', 'bt709', '-color_primaries', 'bt709', '-color_trc', 'bt709', '-movflags', '+faststart', out,
+      ], { stdio: 'inherit' });
+      rmSync(work, { recursive: true, force: true });
+      if (ff.status !== 0) throw new Error('ffmpeg failed');
+    },
+    close() {
+      ws.close();
+      chrome.kill();
+      rmSync(work, { recursive: true, force: true });
+    },
+  };
+}

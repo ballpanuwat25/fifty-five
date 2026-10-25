@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { free, hero, photoOf, studio, when } from '@/content/site';
+import { whenOpen } from '@/lib/opening';
 
 // The pill in the name is the reformer's carriage. When the page opens it slides out once along its rail,
 // slow and controlled, and stops. As you scroll it opens from its place in the name to the whole room.
@@ -180,7 +181,8 @@ export default function Hero() {
       max = reach(from.w);
       drag = { x: e.clientX - Math.max(0, pull) };
       vel = 0;
-      cr.setPointerCapture(e.pointerId);
+      // a pointer the browser does not know (the film's drawn cursor) cannot be captured; the pull works without
+      try { cr.setPointerCapture(e.pointerId); } catch {}
       st.classList.add('is-pulling');
     };
     const onDrag = (e: PointerEvent) => {
@@ -206,12 +208,13 @@ export default function Hero() {
     cr.addEventListener('click', onClick, true);
     cr.addEventListener('dragstart', (e) => e.preventDefault());
 
-    // the opening waits for the type and the photo, but never longer than four seconds
-    let alive = true;
+    // the opening waits for the type and the photo, but never longer than four seconds, and for the
+    // loading screen to give way, so the carriage leaves its rail there and slides out of the name here
+    let alive = true, unwait = () => {};
     Promise.race([
       Promise.all([document.fonts.ready, img.complete ? null : new Promise((r) => img.addEventListener('load', r, { once: true }))]),
       new Promise((r) => setTimeout(r, 4000)),
-    ]).then(() => {
+    ]).then(() => new Promise<void>((r) => { unwait = whenOpen(r); })).then(() => {
       if (!alive) return;
       measure();
       st.classList.add('is-open');
@@ -234,6 +237,7 @@ export default function Hero() {
 
     return () => {
       alive = false;
+      unwait();
       cancelAnimationFrame(raf);
       removeEventListener('resize', onResize);
       removeEventListener('pointermove', onPointer);
