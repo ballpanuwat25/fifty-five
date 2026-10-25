@@ -19,7 +19,10 @@ const switzer = localFont({
 
 const title = 'Fifty-Five · Reformer Pilates, Thong Lo, Bangkok';
 const description = `Reformer Pilates on Thong Lo 13, Bangkok. Eight beds to a room, classes from 07:00, booked online. ${studio.walk}.`;
+// the share image needs a full address: Vercel names the production domain, and a local build uses its own
+const site = process.env.VERCEL_PROJECT_PRODUCTION_URL ? `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}` : 'http://localhost:3013';
 export const metadata: Metadata = {
+  metadataBase: new URL(site),
   title,
   description,
   openGraph: { title, description, type: 'website', siteName: 'Fifty-Five', locale: 'en_GB' },
